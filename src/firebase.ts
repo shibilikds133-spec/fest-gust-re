@@ -137,11 +137,19 @@ export async function ensureStudentsNodeExists(): Promise<string[]> {
       const studentsRef = ref(rtdb, 'students');
       const snapshot = await get(studentsRef);
       if (!snapshot.exists()) {
-        console.info("Students node not found in Firebase. Seeding 40 official student names...");
+        console.info("Students node not found in Firebase. Seeding official student names...");
         await set(studentsRef, OFFICIAL_STUDENTS_LIST);
-        console.info("✅ 40 student names successfully uploaded to Firebase Realtime Database!");
+        console.info("✅ Student names successfully uploaded to Firebase Realtime Database!");
       } else {
-        console.info("Students node exists in Firebase with registered names.");
+        const remoteData = snapshot.val();
+        const remoteList = Array.isArray(remoteData) ? remoteData : Object.values(remoteData);
+        if (OFFICIAL_STUDENTS_LIST.length > remoteList.length) {
+          console.info(`Local list has ${OFFICIAL_STUDENTS_LIST.length} students, but Firebase has ${remoteList.length}. Updating Firebase...`);
+          await set(studentsRef, OFFICIAL_STUDENTS_LIST);
+          console.info("✅ Firebase students list updated with new additions!");
+        } else {
+          console.info("Students node exists in Firebase and is up to date.");
+        }
       }
     } catch (err) {
       console.warn("Notice checking students node:", err);
@@ -230,6 +238,7 @@ export async function eraseAllRegistrationData() {
 // --------------------------------------------------------------------------
 export async function submitGuestRegistration(data: {
   studentName: string;
+  selectedDate?: string;
   guestCount: number;
   foodPreference: 'Lunch' | 'Dinner' | 'Both' | 'Not Required';
 }): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -282,14 +291,14 @@ export function subscribeToGuests(callback: (guests: GuestSubmission[]) => void)
       const registrationsRef = ref(rtdb, 'registrations');
       const unsub = onValue(registrationsRef, (snapshot) => {
         if (snapshot.exists()) {
-          const list: GuestSubmission[] = [];
+          const remoteList: GuestSubmission[] = [];
           snapshot.forEach((childSnap) => {
             const val = childSnap.val();
             let formattedTime = 'Just now';
             if (val.createdAtString) {
               formattedTime = new Date(val.createdAtString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
-            list.unshift({
+            remoteList.unshift({
               id: val.passId || childSnap.key || `alv-${Math.floor(1000 + Math.random() * 9000)}`,
               studentName: val.studentName || 'Student',
               selectedDate: val.selectedDate || 'Both Days',
@@ -299,7 +308,16 @@ export function subscribeToGuests(callback: (guests: GuestSubmission[]) => void)
               createdDate: formattedTime
             });
           });
-          callback(list);
+          
+          // Merge with local guests
+          const localGuests = getLocalGuests();
+          const remoteIds = new Set(remoteList.map(g => g.id));
+          const localOnly = localGuests.filter(g => !remoteIds.has(g.id));
+          const mergedList = [...remoteList, ...localOnly].sort((a, b) => {
+            return new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime();
+          });
+          
+          callback(mergedList);
           return;
         } else {
           // If no remote records yet, deliver local storage

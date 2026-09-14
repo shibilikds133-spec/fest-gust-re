@@ -30,6 +30,12 @@
   text-transform: uppercase;
 }
 
+body.lang-ml,
+body.lang-ml input,
+body.lang-ml button {
+  font-family: 'Manjari', sans-serif !important;
+}
+
 :root {
   --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   --font-ios: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
@@ -150,20 +156,6 @@ p, .ios-paragraph {
   z-index: 50;
 }
 
-/* Glass dropdown scrollbar */
-.ios-student-dropdown-glass::-webkit-scrollbar {
-  width: 5px;
-}
-.ios-student-dropdown-glass::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
-}
-.ios-student-dropdown-glass::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.35);
-  border-radius: 10px;
-}
-.ios-student-dropdown-glass::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 85, 247, 0.6);
-}
 
 /* Glowing text for ALVIORA with Barabara font */
 .alviora-glow-text, .alveora-glow-text {
@@ -510,21 +502,14 @@ p, .ios-paragraph {
   animation: shakeKeypad 0.4s ease-in-out;
 }
 
-/* Custom scrollbar for data table */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Hide all scrollbars globally across the app */
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }

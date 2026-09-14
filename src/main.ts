@@ -22,23 +22,160 @@ import {
 // --------------------------------------------------------------------------
 interface FormState {
   studentName: string;
+  selectedDate: string;
   guestCount: number;
   foodPreference: 'Lunch' | 'Dinner' | 'Both' | 'Not Required';
 }
 
 const formState: FormState = {
   studentName: '',
+  selectedDate: 'Both Days',
   guestCount: 2,
   foodPreference: 'Both'
 };
 
-let currentStep = 0; // 0: Landing, 1: Student, 2: Guests, 3: Food, 4: Success
+let currentStep = 0; // 0: Landing, 1: Lang, 2: Student, 3: Date, 4: Guests, 5: Food, 6: Success
 let adminPinBuffer = '';
 let isAdminAuthenticated = false;
 let allGuestsList: GuestSubmission[] = [];
-let currentFilter = 'all';
+let currentFilter = 'all'; // Food filter
+let currentDateFilter = 'all'; // Date filter
 let currentSearchQuery = '';
 let officialStudentsList: string[] = [];
+
+// --------------------------------------------------------------------------
+// i18n TRANSLATION LOGIC
+// --------------------------------------------------------------------------
+const translations = {
+  en: {
+    badge_fest: "Annual Cultural & Tech Festival 2026",
+    landing_title: "Guest Registration Portal",
+    landing_subtitle: "Welcome to the official guest entry system. Register companions easily for food catering and venue passes.",
+    btn_start: "Start Registration",
+    landing_features: "Fast • Verified Passes • Seamless Entry",
+    
+    student_title: "Student Name",
+    student_subtitle: "Enter your full name to proceed with registration.",
+    student_search_ph: "Search or enter student name...",
+    student_roster: "Students Roster",
+    student_host: "Festival Guest Host",
+    student_ready: "Ready",
+    
+    date_title: "Which day will you attend?",
+    date_subtitle: "Select the festival date for your pass and entry schedule.",
+    date_day1_badge: "Day 1",
+    date_saturday: "Saturday",
+    date_opening: "Festival Opening",
+    date_day2_badge: "Day 2",
+    date_sunday: "Sunday",
+    date_finale: "Grand Finale",
+    date_both: "Both Days",
+    date_both_desc: "Saturday & Sunday (Full Event Pass)",
+    
+    guests_title: "How many guests are coming?",
+    guests_subtitle: "Select the number of companions attending with you.",
+    guests_total: "Total Companions",
+    guests_label: "Guests",
+    
+    food_title: "Select your food preference",
+    food_subtitle: "Choose catering arrangements for your registered party.",
+    food_lunch: "Lunch",
+    food_dinner: "Dinner",
+    food_both: "Both",
+    food_both_desc: "Lunch & Dinner",
+    food_none: "Not Required",
+    food_none_desc: "Entry Pass Only",
+    summary_label: "Registration Summary:",
+    
+    success_title: "Thank You! See you at",
+    success_subtitle: "Your guest entry and festival meal preferences have been recorded.",
+    pass_student: "Student",
+    pass_guests: "Guests",
+    pass_food: "Food Preference",
+    pass_status: "Status",
+    pass_confirmed: "Confirmed",
+    
+    btn_next: "Next",
+    btn_back: "Back",
+    btn_submit: "Submit Registration",
+    btn_register_another: "Register Another Guest",
+    btn_view_admin: "View in Admin Dashboard →"
+  },
+  ml: {
+    badge_fest: "വാർഷിക കലാ സാങ്കേതിക മേള 2026",
+    landing_title: "അതിഥി രജിസ്ട്രേഷൻ പോർട്ടൽ",
+    landing_subtitle: "അതിഥികൾക്കുള്ള ഔദ്യോഗിക രജിസ്ട്രേഷൻ സിസ്റ്റത്തിലേക്ക് സ്വാഗതം. ഭക്ഷണത്തിനും പാസിനുമായി കൂടെവരുന്നവരെ എളുപ്പത്തിൽ രജിസ്റ്റർ ചെയ്യാം.",
+    btn_start: "രജിസ്ട്രേഷൻ ആരംഭിക്കുക",
+    landing_features: "വേഗത്തിൽ • വേരിഫൈഡ് പാസ്സ് • തടസ്സങ്ങളില്ലാത്ത പ്രവേശനം",
+    
+    student_title: "വിദ്യാർത്ഥിയുടെ പേര്",
+    student_subtitle: "രജിസ്ട്രേഷൻ തുടരുന്നതിനായി നിങ്ങളുടെ മുഴുവൻ പേര് നൽകുക.",
+    student_search_ph: "വിദ്യാർത്ഥിയുടെ പേര് നൽകുക...",
+    student_roster: "വിദ്യാർത്ഥികളുടെ ലിസ്റ്റ്",
+    student_host: "അതിഥിയുടെ ഹോസ്റ്റ്",
+    student_ready: "റെഡി",
+    
+    date_title: "ഏത് ദിവസമാണ് പങ്കെടുക്കുന്നത്?",
+    date_subtitle: "നിങ്ങളുടെ പാസിനും പ്രവേശനത്തിനുമുള്ള ഫെസ്റ്റിവൽ തീയതി തിരഞ്ഞെടുക്കുക.",
+    date_day1_badge: "ദിവസം 1",
+    date_saturday: "ശനിയാഴ്ച",
+    date_opening: "ഉദ്ഘാടന ദിവസം",
+    date_day2_badge: "ദിവസം 2",
+    date_sunday: "ഞായറാഴ്ച",
+    date_finale: "സമാപന ദിവസം",
+    date_both: "രണ്ട് ദിവസവും",
+    date_both_desc: "ശനി & ഞായർ (ഫുൾ ഇവൻ്റ് പാസ്)",
+    
+    guests_title: "എത്ര അതിഥികൾ വരുന്നുണ്ട്?",
+    guests_subtitle: "നിങ്ങൾക്കൊപ്പം വരുന്ന അതിഥികളുടെ എണ്ണം തിരഞ്ഞെടുക്കുക.",
+    guests_total: "ആകെ അതിഥികൾ",
+    guests_label: "അതിഥികൾ",
+    
+    food_title: "ഭക്ഷണക്രമം തിരഞ്ഞെടുക്കുക",
+    food_subtitle: "നിങ്ങൾക്കും അതിഥികൾക്കുമുള്ള ഭക്ഷണക്രമം തിരഞ്ഞെടുക്കുക.",
+    food_lunch: "ഉച്ചഭക്ഷണം",
+    food_dinner: "രാത്രിഭക്ഷണം",
+    food_both: "രണ്ടും",
+    food_both_desc: "ഉച്ചഭക്ഷണവും രാത്രിഭക്ഷണവും",
+    food_none: "ആവശ്യമില്ല",
+    food_none_desc: "എൻട്രി പാസ് മാത്രം",
+    summary_label: "രജിസ്ട്രേഷൻ ചുരുക്കം:",
+    
+    success_title: "നന്ദി! കാണാം ഇവിടെ -",
+    success_subtitle: "അതിഥികളുടെ വിവരങ്ങളും ഭക്ഷണക്രമവും വിജയകരമായി രേഖപ്പെടുത്തിയിരിക്കുന്നു.",
+    pass_student: "വിദ്യാർത്ഥി",
+    pass_guests: "അതിഥികൾ",
+    pass_food: "ഭക്ഷണക്രമം",
+    pass_status: "സ്റ്റാറ്റസ്",
+    pass_confirmed: "കൺഫോംഡ്",
+    
+    btn_next: "തുടരുക",
+    btn_back: "തിരികെ",
+    btn_submit: "സബ്മിറ്റ് ചെയ്യുക",
+    btn_register_another: "മറ്റൊരു അതിഥിയെ ചേർക്കുക",
+    btn_view_admin: "അഡ്മിൻ ഡാഷ്ബോർഡിൽ കാണുക →"
+  }
+};
+
+function applyLanguage(lang: 'en' | 'ml') {
+  document.body.classList.remove('lang-ml', 'lang-en');
+  document.body.classList.add(`lang-${lang}`);
+  
+  const dict = translations[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (key && dict[key as keyof typeof dict]) {
+      el.textContent = dict[key as keyof typeof dict];
+    }
+  });
+
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (key && dict[key as keyof typeof dict]) {
+      (el as HTMLInputElement).placeholder = dict[key as keyof typeof dict];
+    }
+  });
+}
 
 // --------------------------------------------------------------------------
 // DOM ELEMENTS
@@ -59,41 +196,47 @@ const stepNameText = document.getElementById('step-name-text') as HTMLElement;
 const progDots = [
   document.getElementById('prog-dot-1') as HTMLElement,
   document.getElementById('prog-dot-2') as HTMLElement,
-  document.getElementById('prog-dot-3') as HTMLElement
+  document.getElementById('prog-dot-3') as HTMLElement,
+  document.getElementById('prog-dot-4') as HTMLElement,
+  document.getElementById('prog-dot-5') as HTMLElement
 ];
-const screens = [
-  document.getElementById('screen-landing') as HTMLElement,
-  document.getElementById('screen-student') as HTMLElement,
-  document.getElementById('screen-guests') as HTMLElement,
-  document.getElementById('screen-food') as HTMLElement,
-  document.getElementById('screen-success') as HTMLElement
-];
+const screens = document.querySelectorAll('.slider-screen');
 
-// Screen 1: Landing
+// Screen 1 Elements
 const btnStartReg = document.getElementById('btn-start-reg') as HTMLButtonElement;
 
-// Screen 2: Student
+// Screen 2 (Lang) Elements
+const btnLangEn = document.getElementById('btn-lang-en') as HTMLButtonElement;
+const btnLangMl = document.getElementById('btn-lang-ml') as HTMLButtonElement;
+const btnBackToLanding = document.getElementById('btn-back-to-landing') as HTMLButtonElement;
+
+// Screen 3 (Student) Elements
 const studentSearchInput = document.getElementById('student-search-input') as HTMLInputElement;
 const btnClearStudent = document.getElementById('btn-clear-student') as HTMLButtonElement;
+const studentDropdownMenu = document.getElementById('student-dropdown-menu') as HTMLElement;
+const studentSuggestionsList = document.getElementById('student-suggestions-list') as HTMLElement;
+const studentRosterCount = document.getElementById('student-roster-count') as HTMLElement;
 const selectedStudentChip = document.getElementById('selected-student-chip') as HTMLElement;
 const selectedStudentName = document.getElementById('selected-student-name') as HTMLElement;
 const selectedInitials = document.getElementById('selected-initials') as HTMLElement;
-const studentDropdownMenu = document.getElementById('student-dropdown-menu') as HTMLElement;
-const studentSuggestionsList = document.getElementById('student-suggestions-list') as HTMLUListElement;
-const studentRosterCount = document.getElementById('student-roster-count') as HTMLElement;
 const btnBackTo1 = document.getElementById('btn-back-to-1') as HTMLButtonElement;
-const btnNextTo3 = document.getElementById('btn-next-to-3') as HTMLButtonElement;
+const btnNextToDate = document.getElementById('btn-next-to-date') as HTMLButtonElement;
 
-// Screen 3: Guests
-const btnStepperMinus = document.getElementById('btn-stepper-minus') as HTMLButtonElement;
-const btnStepperPlus = document.getElementById('btn-stepper-plus') as HTMLButtonElement;
+// Screen 4 (Date) Elements
+const dateToggleBtns = document.querySelectorAll('.date-toggle-btn');
+const btnBackToStudent = document.getElementById('btn-back-to-student') as HTMLButtonElement;
+const btnNextToGuests = document.getElementById('btn-next-to-guests') as HTMLButtonElement;
+
+// Screen 5 (Guests) Elements
 const guestCountDisplay = document.getElementById('guest-count-display') as HTMLElement;
 const guestCountLabel = document.getElementById('guest-count-label') as HTMLElement;
+const btnStepperMinus = document.getElementById('btn-stepper-minus') as HTMLButtonElement;
+const btnStepperPlus = document.getElementById('btn-stepper-plus') as HTMLButtonElement;
 const guestPresetBtns = document.querySelectorAll('.guest-preset-btn');
-const btnBackTo2 = document.getElementById('btn-back-to-2') as HTMLButtonElement;
-const btnNextTo4 = document.getElementById('btn-next-to-4') as HTMLButtonElement;
+const btnBackToDate = document.getElementById('btn-back-to-date') as HTMLButtonElement;
+const btnNextToFood = document.getElementById('btn-next-to-food') as HTMLButtonElement;
 
-// Screen 4: Food
+// Screen 6 (Food) Elements
 const foodToggleBtns = document.querySelectorAll('.ios-food-toggle');
 const summaryBadgePreview = document.getElementById('summary-badge-preview') as HTMLElement;
 const btnBackTo3 = document.getElementById('btn-back-to-3') as HTMLButtonElement;
@@ -101,12 +244,17 @@ const btnSubmitRegistration = document.getElementById('btn-submit-registration')
 const submitBtnText = document.getElementById('submit-btn-text') as HTMLElement;
 const submitBtnSpinner = document.getElementById('submit-btn-spinner') as HTMLElement;
 
-// Screen 5: Success
+// Screen 7 (Success) Elements
+const btnRegisterAnother = document.getElementById('btn-register-another') as HTMLButtonElement;
 const successPassId = document.getElementById('success-pass-id') as HTMLElement;
 const successStudent = document.getElementById('success-student') as HTMLElement;
 const successGuests = document.getElementById('success-guests') as HTMLElement;
 const successFood = document.getElementById('success-food') as HTMLElement;
-const btnRegisterAnother = document.getElementById('btn-register-another') as HTMLButtonElement;
+
+// Sync & Status Elements
+const syncStatusBadge = document.getElementById('sync-status-badge') as HTMLElement;
+const syncStatusText = document.getElementById('sync-status-text') as HTMLElement;
+const activeUserCount = document.getElementById('active-user-count') as HTMLElement;
 
 // Admin Screen Elements
 const adminLoginScreen = document.getElementById('admin-login-screen') as HTMLElement;
@@ -133,6 +281,7 @@ const statCalcDinner = document.getElementById('stat-calc-dinner') as HTMLElemen
 const statNotRequired = document.getElementById('stat-not-required') as HTMLElement;
 const adminSearchInput = document.getElementById('admin-search-input') as HTMLInputElement;
 const tableFilterBtns = document.querySelectorAll('.table-filter-btn');
+const dateFilterBtns = document.querySelectorAll('.date-filter-btn');
 const adminTableBody = document.getElementById('admin-table-body') as HTMLElement;
 const tableCountLabel = document.getElementById('table-count-label') as HTMLElement;
 const btnExportCsv = document.getElementById('btn-export-csv') as HTMLButtonElement;
@@ -150,10 +299,10 @@ const btnSaveFirebaseCfg = document.getElementById('btn-save-firebase-cfg') as H
 const btnResetDemoData = document.getElementById('btn-reset-demo-data') as HTMLButtonElement;
 
 // --------------------------------------------------------------------------
-// 1. SILKY SMOOTH SWIPING PAGE NAVIGATION (Screen 1 to 5)
+// 1. SILKY SMOOTH SWIPING PAGE NAVIGATION (Screen 1 to 7)
 // --------------------------------------------------------------------------
 function goToStep(stepIndex: number) {
-  currentStep = Math.max(0, Math.min(4, stepIndex));
+  currentStep = Math.max(0, Math.min(6, stepIndex));
 
   // Translate slider track horizontally with responsive percentage
   if (sliderTrack) {
@@ -177,16 +326,25 @@ function goToStep(stepIndex: number) {
     sliderContainer.scrollLeft = 0;
   }
 
-  // Update progress bar
-  if (currentStep === 0 || currentStep === 4) {
+  // Update progress bar (hide on Landing and Success)
+  if (currentStep === 0 || currentStep === 6) {
     stepProgressWrapper.classList.add('hidden');
   } else {
     stepProgressWrapper.classList.remove('hidden');
-    const stepLabels = ['Student Name', 'Guest Count', 'Food Preference'];
-    stepIndicatorText.textContent = `Step ${currentStep} of 3`;
-    stepNameText.textContent = stepLabels[currentStep - 1] || '';
+    // We have 5 steps: Lang, Student, Date, Guests, Food
+    const stepLabels = ['Language', 'Student Name', 'Attending Day', 'Guest Count', 'Food Preference'];
+    stepIndicatorText.textContent = `Step ${currentStep} of 5`;
+    
+    // Attempt i18n for step name if possible, or fallback to default
+    let stepLabelText = stepLabels[currentStep - 1] || '';
+    if (document.body.classList.contains('lang-ml')) {
+      const mlLabels = ['ഭാഷ', 'വിദ്യാർത്ഥിയുടെ പേര്', 'ദിവസം', 'അതിഥികൾ', 'ഭക്ഷണക്രമം'];
+      stepLabelText = mlLabels[currentStep - 1] || stepLabelText;
+    }
+    stepNameText.textContent = stepLabelText;
 
     progDots.forEach((dot, idx) => {
+      if (!dot) return;
       if (idx < currentStep) {
         dot.className = 'h-full flex-1 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.7)] transition-all duration-300';
       } else {
@@ -195,26 +353,26 @@ function goToStep(stepIndex: number) {
     });
   }
 
-  // Auto focus input if navigating to step 1
-  if (currentStep === 1) {
+  // Auto focus input if navigating to step 2 (Student)
+  if (currentStep === 2) {
     setTimeout(() => {
       if (sliderContainer) sliderContainer.scrollLeft = 0;
       studentSearchInput.focus({ preventScroll: true });
     }, 200);
   }
 
-  // Update step 4 summary preview
-  if (currentStep === 3) {
+  // Update step 6 summary preview
+  if (currentStep === 5) {
     updateSummaryPreview();
   }
 
-  // Trigger text & pass card entrance animation ONLY after arriving at Screen 5 (Success)
-  const screenSuccess = screens[4];
-  if (currentStep === 4) {
+  // Trigger text & pass card entrance animation ONLY after arriving at Screen 7 (Success)
+  const screenSuccess = screens[6];
+  if (currentStep === 6) {
     if (screenSuccess) {
       screenSuccess.classList.remove('screen-success-animate');
       // Reflow to restart animation sequence cleanly
-      void screenSuccess.offsetWidth;
+      void (screenSuccess as HTMLElement).offsetWidth;
       requestAnimationFrame(() => {
         screenSuccess.classList.add('screen-success-animate');
       });
@@ -331,15 +489,15 @@ function updateStudentName(name: string) {
     selectedStudentChip.classList.add('flex');
 
     // Enable Next button
-    btnNextTo3.disabled = false;
-    btnNextTo3.classList.remove('opacity-45', 'cursor-not-allowed');
+    btnNextToDate.disabled = false;
+    btnNextToDate.classList.remove('opacity-45', 'cursor-not-allowed');
   } else {
     selectedStudentChip.classList.add('hidden');
     selectedStudentChip.classList.remove('flex');
 
     // Disable Next button until at least 2 characters are entered
-    btnNextTo3.disabled = true;
-    btnNextTo3.classList.add('opacity-45', 'cursor-not-allowed');
+    btnNextToDate.disabled = true;
+    btnNextToDate.classList.add('opacity-45', 'cursor-not-allowed');
   }
 }
 
@@ -399,6 +557,7 @@ async function handleFormSubmit() {
   try {
     const result = await submitGuestRegistration({
       studentName: formState.studentName,
+      selectedDate: formState.selectedDate,
       guestCount: formState.guestCount,
       foodPreference: formState.foodPreference
     });
@@ -417,8 +576,8 @@ async function handleFormSubmit() {
     };
     successFood.textContent = foodMap[formState.foodPreference] || formState.foodPreference;
 
-    // Slide to Screen 5
-    goToStep(4);
+    // Slide to Screen 7 (Success)
+    goToStep(6);
   } catch (error) {
     console.error("Submission failed:", error);
     alert("Registration could not be completed. Please try again.");
@@ -431,6 +590,7 @@ async function handleFormSubmit() {
 
 function resetRegistrationForm() {
   formState.studentName = '';
+  formState.selectedDate = 'Both Days';
   formState.guestCount = 2;
   formState.foodPreference = 'Both';
 
@@ -438,7 +598,7 @@ function resetRegistrationForm() {
   btnClearStudent.classList.add('hidden');
   selectedStudentChip.classList.add('hidden');
   selectedStudentChip.classList.remove('flex');
-  btnNextTo3.disabled = true;
+  btnNextToDate.disabled = true;
 
   updateGuestCount(2);
   selectFoodPreference('Both');
@@ -509,31 +669,33 @@ function renderDashboard() {
   if (!isAdminAuthenticated) return;
 
   // 1. Calculate Real-time Summary Cards
-  // Sum of all guest counts
-  const totalGuests = allGuestsList.reduce((acc, g) => acc + (Number(g.guestCount) || 1), 0);
+  // 1. Filter by Date First
+  // "Both Days" guests show up for '19' and '20' date filters.
+  const dateFilteredList = allGuestsList.filter(item => {
+    if (currentDateFilter === 'all') return true;
+    if (item.selectedDate === 'Both Days') return true;
+    return item.selectedDate === currentDateFilter;
+  });
+
+  // 2. Calculate Real-time Summary Cards (based on date-filtered data)
+  const totalGuests = dateFilteredList.reduce((acc, g) => acc + (Number(g.guestCount) || 1), 0);
   
-  // SEPARATE PLAN COUNTS:
-  // Lunch Only: Guests who strictly chose 'Lunch'
-  const lunchOnlyCount = allGuestsList.reduce((acc, g) => {
+  const lunchOnlyCount = dateFilteredList.reduce((acc, g) => {
     return g.foodPreference === 'Lunch' ? acc + (Number(g.guestCount) || 1) : acc;
   }, 0);
 
-  // Dinner Only: Guests who strictly chose 'Dinner'
-  const dinnerOnlyCount = allGuestsList.reduce((acc, g) => {
+  const dinnerOnlyCount = dateFilteredList.reduce((acc, g) => {
     return g.foodPreference === 'Dinner' ? acc + (Number(g.guestCount) || 1) : acc;
   }, 0);
 
-  // Both Plans: Guests who chose 'Both' (Lunch & Dinner)
-  const bothCount = allGuestsList.reduce((acc, g) => {
+  const bothCount = dateFilteredList.reduce((acc, g) => {
     return g.foodPreference === 'Both' ? acc + (Number(g.guestCount) || 1) : acc;
   }, 0);
 
-  // Not Required: Guests who chose 'Not Required'
-  const notRequiredCount = allGuestsList.reduce((acc, g) => {
+  const notRequiredCount = dateFilteredList.reduce((acc, g) => {
     return g.foodPreference === 'Not Required' ? acc + (Number(g.guestCount) || 1) : acc;
   }, 0);
 
-  // Total Meal Portions Required for Catering/Kitchen:
   const totalLunchMeals = lunchOnlyCount + bothCount;
   const totalDinnerMeals = dinnerOnlyCount + bothCount;
 
@@ -552,9 +714,9 @@ function renderDashboard() {
   if (statCalcDinner) statCalcDinner.textContent = `${dinnerOnlyCount} Dinner + ${bothCount} Both`;
   if (statNotRequired) statNotRequired.textContent = notRequiredCount.toLocaleString();
 
-  // 2. Filter Table Records
+  // 3. Filter Table Records by Food and Search
   const query = currentSearchQuery.trim().toLowerCase();
-  const filtered = allGuestsList.filter(item => {
+  const tableFilteredList = dateFilteredList.filter(item => {
     const matchesSearch = !query || 
       item.studentName.toLowerCase().includes(query) || 
       item.foodPreference.toLowerCase().includes(query);
@@ -563,14 +725,14 @@ function renderDashboard() {
     return matchesSearch && matchesFilter;
   });
 
-  tableCountLabel.textContent = `Showing ${filtered.length} of ${allGuestsList.length} submissions`;
+  tableCountLabel.textContent = `Showing ${tableFilteredList.length} of ${allGuestsList.length} total submissions`;
 
-  // 3. Render Table Rows
+  // 4. Render Table Rows
   adminTableBody.innerHTML = '';
-  if (filtered.length === 0) {
+  if (tableFilteredList.length === 0) {
     const emptyTr = document.createElement('tr');
     emptyTr.innerHTML = `
-      <td colspan="4" class="py-8 text-center text-white/40 italic">
+      <td colspan="5" class="py-8 text-center text-white/40 italic">
         No guest registrations found matching the criteria.
       </td>
     `;
@@ -585,11 +747,16 @@ function renderDashboard() {
     'Not Required': { bg: 'bg-slate-500/20 border-slate-500/30', text: 'text-slate-300', label: '✕ None' }
   };
 
-  filtered.forEach(guest => {
+  tableFilteredList.forEach(guest => {
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-white/[0.03] transition-colors';
     
     const badge = badgeMap[guest.foodPreference] || badgeMap['Not Required'];
+
+    // Map the date for visual display
+    let displayDate = guest.selectedDate;
+    if (displayDate === '19') displayDate = 'Feb 19';
+    if (displayDate === '20') displayDate = 'Feb 20';
 
     tr.innerHTML = `
       <td class="py-3 px-4 font-semibold text-white">
@@ -603,6 +770,11 @@ function renderDashboard() {
       <td class="py-3 px-4 text-center">
         <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-white/10 text-white font-bold text-xs">
           ${guest.guestCount}
+        </span>
+      </td>
+      <td class="py-3 px-4 text-center">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-white/80">
+          📅 ${displayDate}
         </span>
       </td>
       <td class="py-3 px-4">
@@ -631,13 +803,20 @@ function downloadCSV() {
     return;
   }
 
-  const headers = ["Student Name", "Guest Count", "Food Preference", "Timestamp"];
-  const rows = allGuestsList.map(g => [
-    `"${g.studentName.replace(/"/g, '""')}"`,
-    g.guestCount,
-    `"${g.foodPreference}"`,
-    `"${g.createdDate || new Date().toISOString()}"`
-  ]);
+  const headers = ["Student Name", "Guest Count", "Date", "Food Preference", "Timestamp"];
+  const rows = allGuestsList.map(g => {
+    let displayDate = g.selectedDate;
+    if (displayDate === '19') displayDate = 'Feb 19';
+    if (displayDate === '20') displayDate = 'Feb 20';
+    
+    return [
+      `"${g.studentName.replace(/"/g, '""')}"`,
+      g.guestCount,
+      `"${displayDate}"`,
+      `"${g.foodPreference}"`,
+      `"${g.createdDate || new Date().toISOString()}"`
+    ];
+  });
 
   const csvContent = "data:text/csv;charset=utf-8," + [
     headers.join(","),
@@ -701,8 +880,7 @@ function initEventListeners() {
   updateClock();
   setInterval(updateClock, 1000);
 
-  // Screen 1
-  btnStartReg.addEventListener('click', () => goToStep(1));
+  // Screen 1 (Will handle further down)
 
   // Enforce zero horizontal scroll offset on slider container
   if (sliderContainer) {
@@ -758,6 +936,8 @@ function initEventListeners() {
           }
         } else if (currentStep === 2) {
           goToStep(3);
+        } else if (currentStep === 3) {
+          goToStep(4);
         }
       } 
       // Swipe Right (Go Back)
@@ -768,6 +948,8 @@ function initEventListeners() {
           goToStep(1);
         } else if (currentStep === 3) {
           goToStep(2);
+        } else if (currentStep === 4) {
+          goToStep(3);
         }
       }
     }, { passive: true });
@@ -812,6 +994,23 @@ function initEventListeners() {
     }
   });
 
+  // Screen 1: Landing
+  btnStartReg.addEventListener('click', () => goToStep(1));
+
+  // Screen 2: Language Selection
+  btnLangEn.addEventListener('click', () => {
+    applyLanguage('en');
+    goToStep(2);
+  });
+  
+  btnLangMl.addEventListener('click', () => {
+    applyLanguage('ml');
+    goToStep(2);
+  });
+  
+  btnBackToLanding.addEventListener('click', () => goToStep(0));
+
+  // Screen 3: Student
   btnClearStudent.addEventListener('click', () => {
     studentSearchInput.value = '';
     updateStudentName('');
@@ -819,14 +1018,32 @@ function initEventListeners() {
     studentSearchInput.focus();
   });
 
-  btnBackTo1.addEventListener('click', () => goToStep(0));
-  btnNextTo3.addEventListener('click', () => {
+  btnBackTo1.addEventListener('click', () => goToStep(1));
+  btnNextToDate.addEventListener('click', () => {
     if (formState.studentName && formState.studentName.length >= 2) {
-      goToStep(2);
+      goToStep(3);
     }
   });
 
-  // Screen 3: Guest Stepper
+  // Screen 4: Date
+  dateToggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const selected = btn.getAttribute('data-date');
+      if (selected) {
+        formState.selectedDate = selected;
+        // Update active class
+        dateToggleBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // Auto-advance
+        setTimeout(() => goToStep(4), 300);
+      }
+    });
+  });
+  
+  btnBackToStudent.addEventListener('click', () => goToStep(2));
+  btnNextToGuests.addEventListener('click', () => goToStep(4));
+
+  // Screen 5: Guest Stepper
   btnStepperMinus.addEventListener('click', () => updateGuestCount(formState.guestCount - 1));
   btnStepperPlus.addEventListener('click', () => updateGuestCount(formState.guestCount + 1));
 
@@ -837,10 +1054,10 @@ function initEventListeners() {
     });
   });
 
-  btnBackTo2.addEventListener('click', () => goToStep(1));
-  btnNextTo4.addEventListener('click', () => goToStep(3));
+  btnBackToDate.addEventListener('click', () => goToStep(3));
+  btnNextToFood.addEventListener('click', () => goToStep(5));
 
-  // Screen 4: Food Preference
+  // Screen 6: Food Preference
   foodToggleBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const food = btn.getAttribute('data-food') as any;
@@ -848,10 +1065,10 @@ function initEventListeners() {
     });
   });
 
-  btnBackTo3.addEventListener('click', () => goToStep(2));
+  btnBackTo3.addEventListener('click', () => goToStep(4));
   btnSubmitRegistration.addEventListener('click', handleFormSubmit);
 
-  // Screen 5: Success
+  // Screen 7: Success
   btnRegisterAnother.addEventListener('click', resetRegistrationForm);
 
   // Admin Keypad Events
@@ -909,6 +1126,17 @@ function initEventListeners() {
       });
       btn.className = 'table-filter-btn px-2.5 py-1.5 rounded-lg bg-white/15 text-white font-medium border border-white/20 transition-all';
       currentFilter = btn.getAttribute('data-filter') || 'all';
+      renderDashboard();
+    });
+  });
+
+  dateFilterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      dateFilterBtns.forEach(b => {
+        b.className = 'date-filter-btn px-2.5 py-1.5 rounded-lg bg-white/5 text-white/70 hover:text-white border border-white/10 transition-all';
+      });
+      btn.className = 'date-filter-btn px-2.5 py-1.5 rounded-lg bg-white/15 text-white font-medium border border-white/20 transition-all';
+      currentDateFilter = btn.getAttribute('data-filter') || 'all';
       renderDashboard();
     });
   });
