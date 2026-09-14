@@ -1,0 +1,7 @@
+{
+  "name": "ALVIORA - Guest Registration & Admin",
+  "description": "Mobile-first, iOS-style glassmorphic guest registration portal and real-time admin dashboard for college festival ALVIORA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
