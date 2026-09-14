@@ -167,7 +167,9 @@ p, .ios-paragraph {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   line-height: 1.2;
+  padding-top: 0.2em;
   padding-bottom: 0.2em;
+  margin-top: -0.2em;
   margin-bottom: -0.2em;
 }
 
