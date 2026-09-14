@@ -18,7 +18,25 @@ import {
 } from './firebase';
 
 // --------------------------------------------------------------------------
-// STATE MANAGEMENT
+// 0. GLOBAL LOADER (Wait for fonts)
+// --------------------------------------------------------------------------
+window.addEventListener('load', async () => {
+  const loader = document.getElementById('global-loader');
+  if (loader) {
+    if (document.fonts) {
+      // Wait for all custom fonts (Barabara, Manjari, etc.) to load to prevent FOUT
+      await document.fonts.ready;
+    }
+    // Add a slight artificial delay for smoother UX
+    setTimeout(() => {
+      loader.classList.add('opacity-0');
+      setTimeout(() => loader.remove(), 500);
+    }, 150);
+  }
+});
+
+// --------------------------------------------------------------------------
+// 1. STATE MANAGEMENT
 // --------------------------------------------------------------------------
 interface FormState {
   studentName: string;
